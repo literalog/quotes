@@ -1,17 +1,15 @@
 package main
 
-import "log"
+import (
+	"log"
+)
 
 func main() {
-	store, err := NewPostgresStorage()
+	store, err := NewMongoStorage()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := store.Init(); err != nil {
-		log.Fatal(err)
-	}
-
-	server := NewApiServer(":8080", store)
-	server.Run()
+	api := NewApiServer(":8080", store)
+	api.Run()
 }

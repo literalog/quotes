@@ -1,66 +1,54 @@
 package main
 
 import (
-	"database/sql"
+	"context"
+	"os"
+	"time"
 
 	_ "github.com/lib/pq"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Storage interface {
 	CreateQuote(*Quote) error
-	GetQuoteByID(string) (*Quote, error)
+	GetQuoteById(id string) (*Quote, error)
 	GetQuotes() ([]*Quote, error)
-	UpdateQuote(*Quote) error
-	DeleteQuote(string) error
+	UpdateQuote(q *Quote) error
+	DeleteQuote(id string) error
 }
 
-type PostgresStorage struct {
-	db *sql.DB
+type MongoStorage struct {
+	client *mongo.Client
 }
 
-func NewPostgresStorage() (*PostgresStorage, error) {
+func NewMongoStorage() (*MongoStorage, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	connStr := ""
+	mongoUri := os.Getenv("MONGO_URI")
+	if mongoUri == "" {
+		mongoUri = "mongodb://localhost:27017"
+	}
 
-	db, err := sql.Open("postgres", connStr)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUri))
 	if err != nil {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	return &PostgresStorage{
-		db: db,
+	return &MongoStorage{
+		client: client,
 	}, nil
-
 }
 
-func (s *PostgresStorage) Init() error {
+func (s *MongoStorage) Init() error {
 	return nil
 }
 
-func (s *PostgresStorage) createQuoteTable() error {
-	query := `
-	CREATE TABLE IF NOT EXISTS quotes (
-		id UUID PRIMARY KEY,
-		author VARCHAR(50) NOT NULL,
-		quote TEXT NOT NULL,
-	)`
-
-	_, err := s.db.Exec(query)
-
-	return err
-
-}
-
-func (s *PostgresStorage) CreateQuote(q *Quote) error {
-	query := `
-	INSERT INTO quotes (author, quote)
-	VALUES ($1, $2)`
-
-	_, err := s.db.Query(query, q.Author, q.Text)
+func (s *MongoStorage) CreateQuote(q *Quote) error {
+	col := s.client.Database("quotesdb").Collection("quotes")
+	_, err := col.InsertOne(context.Background(), q)
 	if err != nil {
 		return err
 	}
@@ -68,40 +56,49 @@ func (s *PostgresStorage) CreateQuote(q *Quote) error {
 	return nil
 }
 
-func (s *PostgresStorage) GetQuoteByID(string) (*Quote, error) {
-	return nil, nil
+func (s *MongoStorage) GetQuoteById(id string) (*Quote, error) {
+	var q Quote
+
+	col := s.client.Database("quotesdb").Collection("quotes")
+	if err := col.FindOne(context.Background(), bson.M{"_id": id}).Decode(&q); err != nil {
+		return nil, err
+	}
+
+	return &q, nil
 }
 
-func (s *PostgresStorage) GetQuotes() ([]*Quote, error) {
+func (s *MongoStorage) GetQuotes() ([]*Quote, error) {
+	var qq []*Quote
 
-	rows, err := s.db.Query("SELECT * FROM quotes")
+	col := s.client.Database("quotesdb").Collection("quotes")
+	cur, err := col.Find(context.Background(), bson.M{})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer cur.Close(context.Background())
 
-	quotes := []*Quote{}
-
-	for rows.Next() {
-		q := new(Quote)
-		err := rows.Scan(
-			&q.Id,
-			&q.Author,
-			&q.Text)
-		if err != nil {
+	for cur.Next(context.Background()) {
+		var q Quote
+		if err := cur.Decode(&q); err != nil {
 			return nil, err
 		}
 
-		quotes = append(quotes, q)
+		qq = append(qq, &q)
 	}
 
-	return quotes, nil
+	return qq, nil
 }
 
-func (s *PostgresStorage) UpdateQuote(*Quote) error {
-	return nil
+func (s *MongoStorage) UpdateQuote(q *Quote) error {
+	col := s.client.Database("quotesdb").Collection("quotes")
+	_, err := col.UpdateOne(context.Background(), bson.M{"_id": q.Id}, bson.M{"$set": q})
+
+	return err
 }
 
-func (s *PostgresStorage) DeleteQuote(string) error {
-	return nil
+func (s *MongoStorage) DeleteQuote(id string) error {
+	col := s.client.Database("quotesdb").Collection("quotes")
+	_, err := col.DeleteOne(context.Background(), bson.M{"_id": id})
+
+	return err
 }

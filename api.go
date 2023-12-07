@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -22,15 +21,23 @@ func NewApiServer(listenAddr string, store Storage) *ApiServer {
 }
 
 func (s *ApiServer) Run() {
-	router := mux.NewRouter()
+	r := mux.NewRouter()
 
-	router.HandleFunc("/quotes", makeHttpHandler(s.handleGetQuotes)).Methods(http.MethodGet)
+	r.HandleFunc("/quotes", makeHttpHandler(s.handleQuotes))
+	r.HandleFunc("/quotes/{id}", makeHttpHandler(s.handleQuotes)).Methods(http.MethodGet)
 
-	http.ListenAndServe(s.listenAddr, router)
 	log.Println("api server listening on", s.listenAddr)
+
+	if err := http.ListenAndServe(s.listenAddr, r); err != nil {
+		log.Fatal("error starting api server", err)
+	}
 }
 
 func (s *ApiServer) handleQuotes(w http.ResponseWriter, r *http.Request) error {
+	if id, ok := mux.Vars(r)["id"]; ok {
+		return s.handleGetQuoteById(w, r, id)
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		return s.handleGetQuotes(w, r)
@@ -46,20 +53,21 @@ func (s *ApiServer) handleQuotes(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *ApiServer) handleGetQuotes(w http.ResponseWriter, r *http.Request) error {
-
-	quotes, err := s.store.GetQuotes()
+	qq, err := s.store.GetQuotes()
 	if err != nil {
 		return err
 	}
 
-	return writeJson(w, http.StatusOK, quotes)
-
+	return writeJson(w, http.StatusOK, qq)
 }
 
-func (s *ApiServer) handleGetQuoteById(w http.ResponseWriter, r *http.Request) error {
-	id := mux.Vars(r)["id"]
-	fmt.Println(id)
-	return writeJson(w, http.StatusOK, Quote{})
+func (s *ApiServer) handleGetQuoteById(w http.ResponseWriter, r *http.Request, id string) error {
+	q, err := s.store.GetQuoteById(id)
+	if err != nil {
+		return err
+	}
+
+	return writeJson(w, http.StatusOK, q)
 }
 
 func (s *ApiServer) handleCreateQuote(w http.ResponseWriter, r *http.Request) error {
@@ -68,20 +76,39 @@ func (s *ApiServer) handleCreateQuote(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	quote := NewQuote(createQuoteReq.Author, createQuoteReq.Text)
-	if err := s.store.CreateQuote(quote); err != nil {
+	q := NewQuote(createQuoteReq.Author, createQuoteReq.Text)
+	if err := s.store.CreateQuote(q); err != nil {
 		return err
 	}
 
-	return writeJson(w, http.StatusCreated, quote)
+	return writeJson(w, http.StatusCreated, q)
 }
 
 func (s *ApiServer) handleUpdateQuote(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	updateQuoteReq := new(UpdateQuoteRequest)
+	if err := json.NewDecoder(r.Body).Decode(updateQuoteReq); err != nil {
+		return err
+	}
+
+	q := NewQuote(updateQuoteReq.Author, updateQuoteReq.Text)
+	if err := s.store.UpdateQuote(q); err != nil {
+		return err
+	}
+
+	return writeJson(w, http.StatusOK, q)
 }
 
 func (s *ApiServer) handleDeleteQuote(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	deleteQuoteReq := new(DeleteQuoteRequest)
+	if err := json.NewDecoder(r.Body).Decode(deleteQuoteReq); err != nil {
+		return err
+	}
+
+	if err := s.store.DeleteQuote(deleteQuoteReq.Id); err != nil {
+		return err
+	}
+
+	return writeJson(w, http.StatusOK, nil)
 }
 
 func writeJson(w http.ResponseWriter, status int, v any) error {
