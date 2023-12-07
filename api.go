@@ -64,7 +64,7 @@ func (s *ApiServer) handleGetQuotes(w http.ResponseWriter, r *http.Request) erro
 func (s *ApiServer) handleGetQuoteById(w http.ResponseWriter, r *http.Request, id string) error {
 	q, err := s.store.GetQuoteById(id)
 	if err != nil {
-		return err
+		return ErrQuoteNotFound
 	}
 
 	return writeJson(w, http.StatusOK, q)
@@ -76,9 +76,13 @@ func (s *ApiServer) handleCreateQuote(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
+	if createQuoteReq.Author == "" || createQuoteReq.Text == "" {
+		return ErrInvalidQuote
+	}
+
 	q := NewQuote(createQuoteReq.Author, createQuoteReq.Text)
 	if err := s.store.CreateQuote(q); err != nil {
-		return err
+		return ErrCreatingQuote
 	}
 
 	return writeJson(w, http.StatusCreated, q)
@@ -90,9 +94,13 @@ func (s *ApiServer) handleUpdateQuote(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
+	if updateQuoteReq.Id == "" || updateQuoteReq.Author == "" || updateQuoteReq.Text == "" {
+		return ErrInvalidQuote
+	}
+
 	q := NewQuote(updateQuoteReq.Author, updateQuoteReq.Text)
 	if err := s.store.UpdateQuote(q); err != nil {
-		return err
+		return ErrUpdatingQuote
 	}
 
 	return writeJson(w, http.StatusOK, q)
@@ -104,11 +112,15 @@ func (s *ApiServer) handleDeleteQuote(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	if err := s.store.DeleteQuote(deleteQuoteReq.Id); err != nil {
-		return err
+	if deleteQuoteReq.Id == "" {
+		return ErrInvalidQuote
 	}
 
-	return writeJson(w, http.StatusOK, nil)
+	if err := s.store.DeleteQuote(deleteQuoteReq.Id); err != nil {
+		return ErrDeletingQuote
+	}
+
+	return writeJson(w, http.StatusOK, "quote deleted successfully")
 }
 
 func writeJson(w http.ResponseWriter, status int, v any) error {
