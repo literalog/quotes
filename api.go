@@ -24,7 +24,7 @@ func (s *ApiServer) Run() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/quotes", makeHttpHandler(s.handleQuotes))
-	r.HandleFunc("/quotes/{id}", makeHttpHandler(s.handleQuotes)).Methods(http.MethodGet)
+	r.HandleFunc("/quotes/{id}", makeHttpHandler(s.handleQuotes))
 
 	log.Println("api server listening on", s.listenAddr)
 
@@ -34,19 +34,29 @@ func (s *ApiServer) Run() {
 }
 
 func (s *ApiServer) handleQuotes(w http.ResponseWriter, r *http.Request) error {
-	if id, ok := mux.Vars(r)["id"]; ok {
-		return s.handleGetQuoteById(w, r, id)
-	}
+	id, ok := mux.Vars(r)["id"]
 
 	switch r.Method {
 	case http.MethodGet:
+		if ok {
+			return s.handleGetQuoteById(w, r, id)
+		}
 		return s.handleGetQuotes(w, r)
 	case http.MethodPost:
+		if ok {
+			return ErrMethodNotAllowed
+		}
 		return s.handleCreateQuote(w, r)
 	case http.MethodPut:
-		return s.handleUpdateQuote(w, r)
+		if !ok {
+			return ErrMissingId
+		}
+		return s.handleUpdateQuote(w, r, id)
 	case http.MethodDelete:
-		return s.handleDeleteQuote(w, r)
+		if !ok {
+			return ErrMissingId
+		}
+		return s.handleDeleteQuote(w, r, id)
 	default:
 		return ErrMethodNotAllowed
 	}
@@ -88,17 +98,18 @@ func (s *ApiServer) handleCreateQuote(w http.ResponseWriter, r *http.Request) er
 	return writeJson(w, http.StatusCreated, q)
 }
 
-func (s *ApiServer) handleUpdateQuote(w http.ResponseWriter, r *http.Request) error {
-	updateQuoteReq := new(UpdateQuoteRequest)
-	if err := json.NewDecoder(r.Body).Decode(updateQuoteReq); err != nil {
+func (s *ApiServer) handleUpdateQuote(w http.ResponseWriter, r *http.Request, id string) error {
+	q := new(Quote)
+	if err := json.NewDecoder(r.Body).Decode(q); err != nil {
 		return err
 	}
 
-	if updateQuoteReq.Id == "" || updateQuoteReq.Author == "" || updateQuoteReq.Text == "" {
+	if q.Author == "" || q.Text == "" {
 		return ErrInvalidQuote
 	}
 
-	q := NewQuote(updateQuoteReq.Author, updateQuoteReq.Text)
+	q.Id = id
+
 	if err := s.store.UpdateQuote(q); err != nil {
 		return ErrUpdatingQuote
 	}
@@ -106,17 +117,8 @@ func (s *ApiServer) handleUpdateQuote(w http.ResponseWriter, r *http.Request) er
 	return writeJson(w, http.StatusOK, q)
 }
 
-func (s *ApiServer) handleDeleteQuote(w http.ResponseWriter, r *http.Request) error {
-	deleteQuoteReq := new(DeleteQuoteRequest)
-	if err := json.NewDecoder(r.Body).Decode(deleteQuoteReq); err != nil {
-		return err
-	}
-
-	if deleteQuoteReq.Id == "" {
-		return ErrInvalidQuote
-	}
-
-	if err := s.store.DeleteQuote(deleteQuoteReq.Id); err != nil {
+func (s *ApiServer) handleDeleteQuote(w http.ResponseWriter, r *http.Request, id string) error {
+	if err := s.store.DeleteQuote(id); err != nil {
 		return ErrDeletingQuote
 	}
 

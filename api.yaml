@@ -1,0 +1,119 @@
+openapi: 3.0.0
+info:
+  title: Quotes API
+  description: A simple API to manage quotes.
+  version: 0.0.1
+
+paths:
+  /quotes:
+    get:
+      summary: Returns a list of quotes.
+      description: Returns a list of all quotes from the system. 
+      responses:
+        '200':
+          description: A JSON array of quotes
+          content:
+            application/json:
+              schema: 
+                type: array
+                items:
+                  $ref: '#/components/schemas/Quote'
+    post:
+      summary: Creates a new quote.
+      description: Creates a new quote in the system.
+      requestBody:
+        description: The quote to create.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Quote'
+      responses:
+        '201':
+          description: The created quote.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          description: Bad request.
+  /quotes/{id}:
+    get:
+      summary: Returns a quote by ID.
+      description: Returns a single quote by its ID.
+      parameters:
+        - name: id
+          in: path
+          description: ID of the quote to return.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The quote.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '404':
+          description: Quote not found.
+    put:
+      summary: Updates a quote.
+      description: Updates a quote in the system.
+      parameters:
+        - name: id
+          in: path
+          description: ID of the quote to update.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: The quote to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Quote'
+      responses:
+        '200':
+          description: The updated quote.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          description: Bad request.
+        '404':
+          description: Quote not found.
+    delete:
+      summary: Deletes a quote.
+      description: Deletes a quote from the system.
+      parameters:
+        - name: id
+          in: path
+          description: ID of the quote to delete.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Quote deleted.
+        '404':
+          description: Quote not found.
+schemas:
+  Quote:
+    type: object
+    required:
+      - author
+      - text
+    properties:
+      id:
+        type: string
+        format: uuid
+      author:
+        type: string
+      text:
+        type: string
