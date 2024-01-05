@@ -3,7 +3,7 @@ This is a simple RESTful API that allows you to interact with a collection of qu
 
 ## Features
 - Get all quotes
-- Get a quote by Id
+- Get a quote by ID
 - Create a new quote
 - Update a quote
 - Delete a quote

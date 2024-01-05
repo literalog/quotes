@@ -1,18 +1,21 @@
-module github.com/beatrizhub/quotes
+module github.com/literalog/quotes
 
-go 1.21.0
+go 1.21.5
 
 require (
-	github.com/google/uuid v1.3.1
-	github.com/gorilla/mux v1.8.0
-	github.com/lib/pq v1.10.9
+	github.com/google/uuid v1.5.0
+	github.com/gorilla/mux v1.8.1
+	github.com/literalog/cerrors v0.0.0-20240103162205-2c22abaa6269
+	github.com/spf13/cobra v1.8.0
 	go.mongodb.org/mongo-driver v1.13.1
 )
 
 require (
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

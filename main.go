@@ -1,15 +1,9 @@
 package main
 
 import (
-	"log"
+	"github.com/literalog/quotes/cmd"
 )
 
 func main() {
-	store, err := NewMongoStorage()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	api := NewApiServer(":8080", store)
-	api.Run()
+	cmd.Execute()
 }

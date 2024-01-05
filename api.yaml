@@ -27,7 +27,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Quote'
+              $ref: '#/components/schemas/QuoteRequest'
       responses:
         '201':
           description: The created quote.
@@ -75,7 +75,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Quote'
+              $ref: '#/components/schemas/QuoteRequest'
       responses:
         '200':
           description: The updated quote.
@@ -109,6 +109,7 @@ schemas:
     required:
       - author
       - text
+      - book_id
     properties:
       id:
         type: string
@@ -117,3 +118,22 @@ schemas:
         type: string
       text:
         type: string
+      book_id:
+        type: string
+        format: uuid
+  QuoteRequest:
+    type: object
+    required:
+      - author
+      - text
+    properties:
+      id:
+        type: string
+        format: uuid
+      author:
+        type: string
+      text:
+        type: string
+      book_id:
+        type: string
+        format: uuid
