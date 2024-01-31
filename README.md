@@ -18,7 +18,7 @@ To run the project, you will need [Go](https://golang.org/) and [MongoDB](https:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/beatrizhub/quotes.git
+git clone https://github.com/literalog/quotes.git
 ```
 
 2. Run the project:
